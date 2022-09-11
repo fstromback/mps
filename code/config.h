@@ -627,6 +627,20 @@
 #endif
 
 
+/* CALL_BEFORE_RESUME -- function to call before resuming
+ * execution in the mutator, either because the mutator
+ * was interrupted by hitting the barrier, or because it
+ * was paused due to scanning. This allows invalidating
+ * caches as necessary for the particular platform and
+ * application.
+ */
+#if defined(CONFIG_CALL_BEFORE_RESUME)
+#define CALL_BEFORE_RESUME() CONFIG_CALL_BEFORE_RESUME()
+#else
+#define CALL_BEFORE_RESUME() do {} while (0)
+#endif
+
+
 /* Tracer Configuration -- see <code/trace.c> */
 
 #define TraceLIMIT ((size_t)1)

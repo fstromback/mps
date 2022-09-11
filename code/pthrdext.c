@@ -98,6 +98,7 @@ static void suspendSignalHandler(int sig,
     AVER(status == -1);
 
     /* Once here, the resume signal handler has run to completion. */
+    CALL_BEFORE_RESUME();
   } ERRNO_RESTORE;
 }
 
