@@ -611,8 +611,10 @@ void ArenaLeaveLock(Arena arena, Bool recursive)
   if(recursive) {
     /* no need to leave shield */
   } else {
-    ShieldLeave(arena);
+    /* Note: Called before ShieldLeave to ensure that any changes
+	   from the collection can be made visible to other threads. */
     CALL_BEFORE_RESUME();
+    ShieldLeave(arena);
   }
   ProtSync(arena);              /* <design/prot#.if.sync> */
   if(recursive) {
