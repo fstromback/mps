@@ -103,20 +103,44 @@ static void sigHandle(int sig, siginfo_t *info, void *uap)  /* .sigh.args */
     /* get an accurate context (the MPS would fail if it were the second in */
     /* line) but it's the best we can do. */
 
-    e = sigaction(PROT_SIGNAL, &sigNext, &sa);
-    AVER(e == 0);
     e = sigemptyset(&asigset);
     AVER(e == 0);
     e = sigaddset(&asigset, PROT_SIGNAL);
     AVER(e == 0);
-    e = sigprocmask(SIG_UNBLOCK, &asigset, &oldset);
-    AVER(e == 0);
-    e = kill(getpid(), PROT_SIGNAL);
-    AVER(e == 0);
-    e = sigprocmask(SIG_SETMASK, &oldset, NULL);
-    AVER(e == 0);
-    e = sigaction(PROT_SIGNAL, &sa, NULL);
-    AVER(e == 0);
+
+    /* FIX: We look at the old signal structure and call the handler if */
+    /* we understand it. Note: We unblock the signal when calling the */
+    /* handler to allow some form of reentrancy (e.g. if the handler */
+    /* accesses memory by the MPS, it the code above will be called. */
+    /* This is, of course, not necessarily a good idea, but allows some */
+    /* form of last-resort handling at least. */
+    if (sigNext.sa_flags & SA_SIGINFO) {
+      /* Extended signal handler. */
+      e = sigprocmask(SIG_UNBLOCK, &asigset, &oldset);
+      AVER(e == 0);
+      (*sigNext.sa_sigaction)(sig, info, uap);
+      e = sigprocmask(SIG_SETMASK, &oldset, NULL);
+      AVER(e == 0);
+    } else if (sigNext.sa_handler == SIG_DFL || sigNext.sa_handler == SIG_IGN) {
+      /* Use default mechanisms. */
+      e = sigaction(PROT_SIGNAL, &sigNext, &sa);
+      AVER(e == 0);
+      e = sigprocmask(SIG_UNBLOCK, &asigset, &oldset);
+      AVER(e == 0);
+      e = kill(getpid(), PROT_SIGNAL);
+      AVER(e == 0);
+      e = sigprocmask(SIG_SETMASK, &oldset, NULL);
+      AVER(e == 0);
+      e = sigaction(PROT_SIGNAL, &sa, NULL);
+      AVER(e == 0);
+    } else {
+      /* Simple signal handler. */
+      e = sigprocmask(SIG_UNBLOCK, &asigset, &oldset);
+      AVER(e == 0);
+      (*sigNext.sa_handler)(sig);
+      e = sigprocmask(SIG_SETMASK, &oldset, NULL);
+      AVER(e == 0);
+    }
 
   done:
     ;
