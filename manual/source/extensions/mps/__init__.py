@@ -1,6 +1,6 @@
 '''
 Sphinx extensions for the MPS documentation.
-See <http://sphinx-doc.org/extensions.html>
+See <https://www.sphinx-doc.org/en/master/development/index.html>
 '''
 
 from collections import defaultdict
@@ -56,12 +56,13 @@ class MpsDirective(Directive):
         else:
             return
         if hasattr(cls, 'node_class') and hasattr(cls, 'visit'):
-            app.add_node(cls.node_class, html=cls.visit, latex=cls.visit,
+            app.add_node(cls.node_class, override=True,
+                         html=cls.visit, latex=cls.visit,
                          text=cls.visit, man=cls.visit)
         if hasattr(cls, 'domain'):
-            app.add_directive_to_domain(cls.domain, name, cls)
+            app.add_directive_to_domain(cls.domain, name, cls, override=True)
         else:
-            app.add_directive(name, cls)
+            app.add_directive(name, cls, override=True)
 
 class MpsPrefixDirective(MpsDirective):
     domain = 'mps'
@@ -279,9 +280,10 @@ class GlossaryTransform(transforms.Transform):
                     and isinstance(c[0], see)):
                     self.see_only_ids |= ids
 
-        # Add cross-reference targets for plurals.
+        # Add cross-reference targets for plural and capitalized forms.
         objects = self.document.settings.env.domaindata['std']['objects']
-        endings = [(l, l + 's') for l in 'abcedfghijklmnopqrtuvwxz']
+        regular = 'abcedfghijklmnopqrtuvwxz'
+        endings = [(l, l + 's') for l in regular + regular.upper()]
         endings.extend([
             ('ss', 'sses'),
             ('ing', 'ed'),
@@ -299,15 +301,21 @@ class GlossaryTransform(transforms.Transform):
             else:
                 old_fullname = fullname
                 sense = ''
+
+            def maybe_add(new_fullname):
+                new_key = name, new_fullname
+                if new_key not in objects:
+                    objects[new_key] = value
+
+            maybe_add(old_fullname.capitalize())
             if any(old_fullname.endswith(e) for _, e in endings):
                 continue
             for old_ending, new_ending in endings:
                 if not old_fullname.endswith(old_ending):
                     continue
                 new_fullname = '{}{}{}'.format(old_fullname[:len(old_fullname) - len(old_ending)], new_ending, sense)
-                new_key = name, new_fullname
-                if new_key not in objects:
-                    objects[new_key] = value
+                maybe_add(new_fullname)
+                maybe_add(new_fullname.capitalize())
 
     @classmethod
     def warn_indirect_terms(cls, app, exception):
