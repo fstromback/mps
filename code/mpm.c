@@ -290,9 +290,14 @@ static Res WriteULongest(mps_lib_FILE *stream, ULongest w, unsigned base,
 
   /* If the number is not as wide as the requested field, pad out the */
   /* buffer with zeros. */
-  while(i > MPS_WORD_WIDTH - width) {
-    --i;
-    buf[i] = pad;
+  if (width > 1) {
+    /* Note: The if-statement is not necessary for correctness. */
+    /* However, GCC emits an out-of-bounds warning without it on */
+    /* optimization levels -O3 and with -Wall -Wextra. */
+    while(i > MPS_WORD_WIDTH - width) {
+      --i;
+      buf[i] = pad;
+    }
   }
 
   r = mps_lib_fputs(&buf[i], stream);
